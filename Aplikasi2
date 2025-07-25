@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Laporan Pengantaran Makanan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        /* Style for disabled elements */
+        .disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        #video-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin: auto;
+        }
+        #video {
+            width: 100%;
+            height: auto;
+            border-radius: 0.5rem;
+        }
+        .message-box {
+            transition: transform 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div id="app-container" class="max-w-4xl mx-auto p-4 md:p-6">
+
+        <!-- Header -->
+        <header class="text-center mb-6">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">Laporan Pengantaran Katering</h1>
+            <p class="text-gray-600 mt-1">Aplikasi untuk kurir mencatat bukti pengantaran.</p>
+        </header>
+
+        <!-- Admin Panel -->
+        <div class="bg-white p-6 rounded-xl shadow-md mb-8">
+            <h2 class="text-2xl font-semibold mb-4 border-b pb-2">Panel Admin: Tambah Pelanggan</h2>
+            <div class="space-y-4">
+                <div>
+                    <label for="customerName" class="block text-sm font-medium text-gray-700">Nama Pelanggan</label>
+                    <input type="text" id="customerName" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="Contoh: Bapak Budi">
+                </div>
+                <div>
+                    <label for="customerAddress" class="block text-sm font-medium text-gray-700">Alamat</label>
+                    <input type="text" id="customerAddress" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="Contoh: Jl. Merdeka No. 123">
+                </div>
+                <button id="addCustomerBtn" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                    </svg>
+                    Tambah ke Daftar Antaran
+                </button>
+            </div>
+        </div>
+
+        <!-- Customer List for Courier -->
+        <div id="courier-view">
+            <h2 class="text-2xl font-semibold mb-4">Daftar Antaran Hari Ini</h2>
+            <div id="loading" class="text-center py-8">
+                <p class="text-gray-500">Menghubungkan ke server...</p>
+            </div>
+            <div id="customer-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Customer cards will be inserted here by JavaScript -->
+            </div>
+             <div id="no-customers" class="hidden text-center py-8 bg-white rounded-xl shadow-md">
+                <p class="text-gray-500">Belum ada data pengantaran. Silakan tambahkan dari Panel Admin.</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Delivery Modal -->
+    <div id="delivery-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 md:p-8 transform transition-all scale-95 opacity-0" id="modal-content">
+            <div class="flex justify-between items-start mb-4">
+                 <h2 class="text-2xl font-bold">Laporan untuk <span id="modal-customer-name" class="text-indigo-600"></span></h2>
+                 <button id="close-modal-btn" class="text-gray-400 hover:text-gray-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                 </button>
+            </div>
+           
+            <div class="space-y-4">
+                <!-- Camera View -->
+                <div id="camera-view">
+                    <p class="text-sm text-gray-600 mb-2">Arahkan kamera ke makanan yang sudah diterima pelanggan.</p>
+                    <div id="video-container" class="bg-gray-200 rounded-lg overflow-hidden shadow-inner">
+                        <video id="video" playsinline autoplay muted></video>
+                    </div>
+                    <canvas id="canvas" class="hidden"></canvas>
+                    <button id="take-photo-btn" class="mt-4 w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M2 6a2 2 0 012-2h12a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zm4 3a2 2 0 100 4 2 2 0 000-4z" />
+                            <path d="M10 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        Ambil Foto Bukti
+                    </button>
+                </div>
+
+                <!-- Photo Preview -->
+                <div id="preview-view" class="hidden">
+                    <p class="text-sm text-gray-600 mb-2">Pratinjau Foto. Tekan "Kirim Laporan" jika sudah sesuai.</p>
+                    <img id="photo-preview" src="" alt="Bukti Foto Pengantaran" class="rounded-lg shadow-md w-full">
+                    <div class="flex gap-4 mt-4">
+                        <button id="retake-photo-btn" class="w-full flex justify-center items-center py-3 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            Ulangi Foto
+                        </button>
+                        <button id="send-report-btn" class="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.428A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                            </svg>
+                            Kirim Laporan
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Message Boxes -->
+    <div id="success-message-box" class="message-box hidden fixed top-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg transform translate-x-full"></div>
+    <div id="error-message-box" class="message-box hidden fixed top-5 right-5 bg-red-500 text-white py-2 px-4 rounded-lg shadow-lg transform translate-x-full"></div>
+
+
+    <script type="module">
+        // Firebase Imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, serverTimestamp, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- FIREBASE CONFIGURATION ---
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "AIza...", authDomain: "...", projectId: "..." };
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-food-delivery-app';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // --- FIREBASE INITIALIZATION ---
+        let app, auth, db, userId;
+        let isAuthReady = false;
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+        } catch (e) {
+            console.error("Error initializing Firebase:", e);
+            document.getElementById('loading').innerText = "Gagal terhubung ke server. Coba muat ulang halaman.";
+        }
+        
+        // --- DOM ELEMENTS ---
+        const customerNameInput = document.getElementById('customerName');
+        const customerAddressInput = document.getElementById('customerAddress');
+        const addCustomerBtn = document.getElementById('addCustomerBtn');
+        const customerListDiv = document.getElementById('customer-list');
+        const loadingDiv = document.getElementById('loading');
+        const noCustomersDiv = document.getElementById('no-customers');
+        
+        const modal = document.getElementById('delivery-modal');
+        const modalContent = document.getElementById('modal-content');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const modalCustomerName = document.getElementById('modal-customer-name');
+        
+        const cameraView = document.getElementById('camera-view');
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const takePhotoButton = document.getElementById('take-photo-btn');
+        
+        const previewView = document.getElementById('preview-view');
+        const photoPreview = document.getElementById('photo-preview');
+        const retakePhotoButton = document.getElementById('retake-photo-btn');
+        const sendReportButton = document.getElementById('send-report-btn');
+        const successMessageBox = document.getElementById('success-message-box');
+        const errorMessageBox = document.getElementById('error-message-box');
+
+        let currentCustomerId = null;
+        let videoStream = null;
+
+        // --- UI MESSAGING ---
+        function showMessage(element, message) {
+            element.innerText = message;
+            element.classList.remove('hidden', 'translate-x-full');
+            element.classList.add('translate-x-0');
+            setTimeout(() => {
+                element.classList.remove('translate-x-0');
+                element.classList.add('translate-x-full');
+                setTimeout(() => element.classList.add('hidden'), 300);
+            }, 3000);
+        }
+
+        function showSuccessMessage(message) {
+            showMessage(successMessageBox, message);
+        }
+
+        function showErrorMessage(message) {
+            showMessage(errorMessageBox, message);
+        }
+        
+        // --- FIRESTORE LOGIC ---
+        async function addCustomer() {
+            if (!isAuthReady) {
+                showErrorMessage("Koneksi belum siap. Mohon tunggu sebentar.");
+                return;
+            }
+            const name = customerNameInput.value.trim();
+            const address = customerAddressInput.value.trim();
+
+            if (!name || !address) {
+                showErrorMessage("Nama dan alamat pelanggan tidak boleh kosong.");
+                return;
+            }
+
+            try {
+                const customersCollection = collection(db, `artifacts/${appId}/public/data/customers`);
+                await addDoc(customersCollection, {
+                    name: name,
+                    address: address,
+                    status: 'pending',
+                    createdAt: serverTimestamp()
+                });
+                customerNameInput.value = '';
+                customerAddressInput.value = '';
+                showSuccessMessage("Pelanggan berhasil ditambahkan!");
+            } catch (error) {
+                console.error("Error adding customer: ", error);
+                showErrorMessage("Gagal menambahkan pelanggan.");
+            }
+        }
+
+        function listenToCustomers() {
+            if (!isAuthReady) {
+                console.warn("listenToCustomers dipanggil sebelum otentikasi siap.");
+                return;
+            }
+            const customersCollection = collection(db, `artifacts/${appId}/public/data/customers`);
+            const q = query(customersCollection);
+
+            onSnapshot(q, (snapshot) => {
+                loadingDiv.style.display = 'none';
+                customerListDiv.innerHTML = ''; 
+
+                if (snapshot.empty) {
+                    noCustomersDiv.classList.remove('hidden');
+                } else {
+                    noCustomersDiv.classList.add('hidden');
+                    let customers = [];
+                    snapshot.forEach(doc => {
+                        customers.push({ id: doc.id, ...doc.data() });
+                    });
+
+                    customers.sort((a, b) => {
+                        if (a.status === 'pending' && b.status !== 'pending') return -1;
+                        if (a.status !== 'pending' && b.status === 'pending') return 1;
+                        const dateA = a.createdAt?.toDate() || new Date(0);
+                        const dateB = b.createdAt?.toDate() || new Date(0);
+                        return dateA - dateB;
+                    });
+
+                    customers.forEach(customer => {
+                        const card = createCustomerCard(customer);
+                        customerListDiv.appendChild(card);
+                    });
+                }
+            }, (error) => {
+                console.error("Error listening to customers:", error);
+                loadingDiv.innerText = "Gagal memuat data. Periksa izin dan koneksi internet Anda.";
+                showErrorMessage("Gagal memuat data pelanggan.");
+            });
+        }
+
+        async function sendReport(customerId) {
+            if (!customerId) return;
+            try {
+                const customerDocRef = doc(db, `artifacts/${appId}/public/data/customers`, customerId);
+                await updateDoc(customerDocRef, {
+                    status: 'delivered',
+                    deliveredAt: serverTimestamp(),
+                });
+                closeModal();
+                showSuccessMessage("Laporan berhasil dikirim!");
+            } catch (error) {
+                console.error("Error updating document:", error);
+                showErrorMessage("Gagal mengirim laporan.");
+            }
+        }
+
+        // --- UI RENDERING ---
+        function createCustomerCard(customer) {
+            const card = document.createElement('div');
+            const isDelivered = customer.status === 'delivered';
+            
+            card.className = `p-5 rounded-xl shadow-lg transition-transform transform hover:-translate-y-1 ${isDelivered ? 'bg-gray-200' : 'bg-white'}`;
+            
+            let deliveredAtHTML = '';
+            if (isDelivered && customer.deliveredAt) {
+                deliveredAtHTML = `<p class="text-xs text-gray-500 mt-1">Terkirim: ${customer.deliveredAt.toDate().toLocaleString('id-ID')}</p>`;
+            }
+
+            card.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <h3 class="text-lg font-bold ${isDelivered ? 'text-gray-500' : 'text-gray-900'}">${customer.name}</h3>
+                    ${isDelivered ? `
+                        <div class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                            Terkirim
+                        </div>
+                    ` : `
+                        <div class="bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                            Menunggu
+                        </div>
+                    `}
+                </div>
+                <p class="text-sm ${isDelivered ? 'text-gray-500' : 'text-gray-600'} mt-1">${customer.address}</p>
+                ${deliveredAtHTML}
+                <button data-id="${customer.id}" data-name="${customer.name}" class="deliver-btn mt-4 w-full py-2 px-4 rounded-md text-sm font-medium focus:outline-none ${isDelivered ? 'bg-gray-400 text-gray-700 disabled' : 'bg-indigo-500 text-white hover:bg-indigo-600'}" ${isDelivered ? 'disabled' : ''}>
+                    ${isDelivered ? 'Sudah Diantar' : 'Antar & Ambil Foto'}
+                </button>
+            `;
+            return card;
+        }
+
+        // --- MODAL & CAMERA LOGIC ---
+        function openModal(customerId, customerName) {
+            currentCustomerId = customerId;
+            modalCustomerName.innerText = customerName;
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modalContent.classList.remove('scale-95', 'opacity-0');
+            }, 10);
+            startCamera();
+        }
+
+        function closeModal() {
+            modalContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                stopCamera();
+                currentCustomerId = null;
+                cameraView.classList.remove('hidden');
+                previewView.classList.add('hidden');
+                photoPreview.src = '';
+            }, 200);
+        }
+
+        async function startCamera() {
+            try {
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                    video.srcObject = videoStream;
+                    video.play();
+                }
+            } catch (err) {
+                console.error("Error accessing camera: ", err);
+                showErrorMessage("Tidak bisa mengakses kamera.");
+                closeModal();
+            }
+        }
+
+        function stopCamera() {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+            }
+        }
+
+        function takePhoto() {
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            const data = canvas.toDataURL('image/jpeg');
+            photoPreview.src = data;
+
+            cameraView.classList.add('hidden');
+            previewView.classList.remove('hidden');
+            stopCamera();
+        }
+        
+        function retakePhoto() {
+             previewView.classList.add('hidden');
+             cameraView.classList.remove('hidden');
+             photoPreview.src = '';
+             startCamera();
+        }
+
+        // --- AUTHENTICATION & APP INITIALIZATION (FIXED) ---
+        async function initializeAppAndAuth() {
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    userId = user.uid;
+                    isAuthReady = true;
+                    console.log("Otentikasi berhasil. UID:", userId);
+                    listenToCustomers();
+                } else {
+                    isAuthReady = false;
+                    userId = null;
+                    console.log("Pengguna keluar.");
+                }
+            });
+
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Gagal melakukan otentikasi:", error);
+                loadingDiv.innerText = "Gagal melakukan otentikasi.";
+                showErrorMessage("Otentikasi Gagal.");
+            }
+        }
+
+        // --- EVENT LISTENERS ---
+        addCustomerBtn.addEventListener('click', addCustomer);
+        
+        customerListDiv.addEventListener('click', (e) => {
+            if (e.target.classList.contains('deliver-btn')) {
+                const customerId = e.target.dataset.id;
+                const customerName = e.target.dataset.name;
+                openModal(customerId, customerName);
+            }
+        });
+
+        closeModalBtn.addEventListener('click', closeModal);
+        takePhotoButton.addEventListener('click', takePhoto);
+        retakePhotoButton.addEventListener('click', retakePhoto);
+        sendReportButton.addEventListener('click', () => sendReport(currentCustomerId));
+        
+        // --- START THE APP ---
+        initializeAppAndAuth();
+
+    </script>
+</body>
+</html>
